@@ -34,6 +34,8 @@
 #include <hydra/multivector.h>
 #include <hydra/PhaseSpace.h>
 #include <hydra/PhaseSpaceIntegrator.h>
+#include <hydra/GenzMalikQuadrature.h>
+#include <hydra/Plain.h>
 #include <hydra/Decays.h>
 
 #include <hydra/DenseHistogram.h>
@@ -70,7 +72,7 @@ struct parity<L, false>: std::integral_constant<int,1>{};
 template<hydra::Wave L>
 struct parity<L, true>:  std::integral_constant<int,-1>{};
 
-template<hydra::Wave L>
+template<hydra::Wave L,typename T = double>
 class Resonance: public hydra::BaseFunctor<Resonance<L>, hydra::complex<double>, 4>
 {
 	using hydra::BaseFunctor<Resonance<L>, hydra::complex<double>, 4>::_par;
@@ -109,7 +111,7 @@ public:
 	hydra::BreitWignerLineShape<L> const& GetLineShape() const {	return fLineShape; }
 
     __hydra_dual__  inline
-	hydra::complex<double> Evaluate(unsigned int n, double* p)  const {
+	hydra::complex<double> Evaluate(unsigned int n, double *p)  const {
 
 
 		double s12 = hydra::get<0>(p);
@@ -126,7 +128,7 @@ public:
 		return r;
 
 	}
-    
+
 
 private:
 
@@ -138,6 +140,7 @@ private:
 
 int main(int argv, char** argc)
 {   
+    
     //E791
     double f0_980_MASS    = 0.990;
     double f0_980_GPP     = 0.02;
@@ -174,54 +177,57 @@ int main(int argv, char** argc)
     double D_MASS         = 1.96834;
     double PI_MASS        = 0.13957061;// pi mass
 
-    auto mass       = hydra::Parameter("F0_980_MASS",f0_980_MASS,0.0001);
-    auto width      = hydra::Parameter("F0_980_WIDTH",f0_980_WIDTH,0.0001);
-    auto coef_re    = hydra::Parameter("F0_980_COEF_RE",f0_980_re,0.0001);
-    auto coef_im    = hydra::Parameter("F0_980_COEF_IM",f0_980_img,0.0001);
+    auto mass       = hydra::Parameter("F0_980_MASS",f0_980_MASS,0.0001,true);
+    auto width      = hydra::Parameter("F0_980_WIDTH",f0_980_WIDTH,0.0001,true);
+    auto coef_re    = hydra::Parameter("F0_980_COEF_RE",f0_980_re,0.0001,true);
+    auto coef_im    = hydra::Parameter("F0_980_COEF_IM",f0_980_img,0.0001,true);
 
     Resonance<hydra::SWave> F0980_Resonance(coef_re, coef_im, mass, width, D_MASS, PI_MASS, PI_MASS, PI_MASS , 5.0);
 
-    mass            = hydra::Parameter("F0_1370_MASS",f0_1370_MASS,0.0001);
-    width           = hydra::Parameter("F0_1370_WIDTH",f0_1370_WIDTH,0.0001);
+    mass            = hydra::Parameter("F0_1370_MASS",f0_1370_MASS,0.0001,true);
+    width           = hydra::Parameter("F0_1370_WIDTH",f0_1370_WIDTH,0.0001,true);
     coef_re         = hydra::Parameter("F0_1370_COEF_RE",f0_1370_re,0.0001);
     coef_im         = hydra::Parameter("F0_1370_COEF_IM",f0_1370_img,0.0001);
 
     Resonance<hydra::SWave> F01370_Resonance(coef_re, coef_im, mass, width, D_MASS, PI_MASS, PI_MASS, PI_MASS , 5.0);
 
-    mass            = hydra::Parameter("rho_770_MASS",rho770_MASS,0.0001);
-    width           = hydra::Parameter("rho_770_WIDTH",rho770_WIDTH,0.0001);
+    mass            = hydra::Parameter("rho_770_MASS",rho770_MASS,0.0001,true);
+    width           = hydra::Parameter("rho_770_WIDTH",rho770_WIDTH,0.0001,true);
     coef_re         = hydra::Parameter("rho_770_COEF_RE",rho770_re,0.0001);
     coef_im         = hydra::Parameter("rho_770_COEF_IM",rho770_img,0.0001);
 
     Resonance<hydra::PWave> RHO770_Resonance(coef_re, coef_im, mass, width, D_MASS, PI_MASS, PI_MASS, PI_MASS , 5.0);
 
-    mass            = hydra::Parameter("rho_1450_MASS",rho1450_MASS,0.0001);
-    width           = hydra::Parameter("rho_1450_WIDTH",rho1450_WIDTH,0.0001);
+    mass            = hydra::Parameter("rho_1450_MASS",rho1450_MASS,0.0001,true);
+    width           = hydra::Parameter("rho_1450_WIDTH",rho1450_WIDTH,0.0001,true);
     coef_re         = hydra::Parameter("rho_1450_COEF_RE",rho1450_re,0.0001);
     coef_im         = hydra::Parameter("rho_1450_COEF_IM",rho1450_img,0.0001);
 
     Resonance<hydra::PWave> RHO1450_Resonance(coef_re, coef_im, mass, width, D_MASS, PI_MASS, PI_MASS, PI_MASS , 5.0);
 
-    mass            = hydra::Parameter("omega_782_MASS",omega_MASS,0.0001);
-    width           = hydra::Parameter("omega_782_WIDTH",omega_WIDTH,0.0001);
+    mass            = hydra::Parameter("omega_782_MASS",omega_MASS,0.0001,true);
+    width           = hydra::Parameter("omega_782_WIDTH",omega_WIDTH,0.0001,true);
     coef_re         = hydra::Parameter("omega_782_COEF_RE",omega_re,0.0001);
     coef_im         = hydra::Parameter("omega_782_COEF_IM",omega_img,0.0001);
 
     Resonance<hydra::PWave> OMEGA782_Resonance(coef_re, coef_im, mass, width, D_MASS, PI_MASS, PI_MASS, PI_MASS , 5.0);
 
-    mass            = hydra::Parameter("f2_1270_MASS",f2_1270_MASS,0.0001);
-    width           = hydra::Parameter("f2_1270_WIDTH",f2_1270_WIDTH,0.0001);
-    coef_re         = hydra::Parameter("f2_1270_COEF_RE",f2_1270_re,0.0001,true);
-    coef_im         = hydra::Parameter("f2_1270_COEF_IM",f2_1270_img,0.0001,true);
+    mass            = hydra::Parameter("f2_1270_MASS",f2_1270_MASS,0.0001,true);
+    width           = hydra::Parameter("f2_1270_WIDTH",f2_1270_WIDTH,0.0001,true);
+    coef_re         = hydra::Parameter("f2_1270_COEF_RE",f2_1270_re,0.0001);
+    coef_im         = hydra::Parameter("f2_1270_COEF_IM",f2_1270_img,0.0001);
 
     Resonance<hydra::DWave> F21270_Resonance(coef_re, coef_im, mass, width, D_MASS, PI_MASS, PI_MASS, PI_MASS , 5.0);
 
     //parametric lambda
-	auto Norm = hydra::wrap_lambda( [] __hydra_dual__ ( unsigned int n, hydra::complex<double>* x){
+	auto Norm = hydra::wrap_lambda( [] __hydra_dual__ ( unsigned int n, hydra::complex<double> *x){
 
 				hydra::complex<double> r(0,0);
 
-				for(unsigned int i=0; i< n;i++)	r += x[i];
+				for(unsigned int i=0; i< n;i++){
+                    
+                    	r += x[i];
+                }
 
 				return hydra::norm(r);
 	});
@@ -236,8 +242,14 @@ int main(int argv, char** argc)
 			F21270_Resonance
 			 );
 
-    auto Model_PDF = hydra::make_pdf( Model,
-				hydra::PhaseSpaceIntegrator<3, hydra::device::sys_t>(D_MASS, {PI_MASS, PI_MASS, PI_MASS}, 500000));
+
+
+    double min[2] = {pow(2*PI_MASS,2), pow(2*PI_MASS,2) };
+    double max[2] = { pow(D_MASS-PI_MASS,2), pow(D_MASS-PI_MASS,2)};
+    hydra::Plain<2, hydra::device::sys_t> Integrator(min,max,500);
+    //hydra::GenzMalikQuadrature<2, hydra::device::sys_t> GMQ(min, max, 10);
+    auto Model_PDF = hydra::make_pdf( Model,Integrator);
+    //auto Model_PDF = hydra::make_pdf( Model,GMQ);
     
     std::cout << "-----------------------------------------"<<std::endl;
 	std::cout <<"| Initial PDF Norm: "<< Model_PDF.GetNorm() << "̣ +/- " <<   Model_PDF.GetNormError() << std::endl;
@@ -254,7 +266,7 @@ int main(int argv, char** argc)
     t->SetBranchAddress("s12_pipi_DTF",&_s12);
     t->SetBranchAddress("s13_pipi_DTF",&_s13);
 
-    hydra::multiarray<double,2, hydra::device::sys_t> particles;
+    hydra::multivector<hydra::tuple<double, double>, hydra::device::sys_t> particles;
     
     for(int i = 0 ; i < 200000; i++){
         particles.push_back(hydra::make_tuple(_s12,_s13));

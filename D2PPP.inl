@@ -243,7 +243,7 @@ int main(int argv, char** argc)
 	std::cout <<"| Initial PDF Norm: "<< Model_PDF.GetNorm() << "̣ +/- " <<   Model_PDF.GetNormError() << std::endl;
 	std::cout << "-----------------------------------------"<<std::endl;
 
-    std::string file = "/home/juan/juan/work/dados/D2PPP_92.root";
+    std::string file = "../../hydra_charm/Ds3pi_toyMC.root";
     std::cout << "-----------------------------------------"<<std::endl;
 	std::cout <<"| Getting Data: "<< file << std::endl;
 	std::cout << "-----------------------------------------"<<std::endl;

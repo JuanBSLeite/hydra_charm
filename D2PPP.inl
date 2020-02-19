@@ -62,17 +62,7 @@ using namespace ROOT;
 using namespace ROOT::Minuit2;
 using namespace hydra::placeholders;
 
-//compute the Wave parity in compile time
-template<hydra::Wave L, bool Flag=(L%2)>
-struct parity;
-//positive
 template<hydra::Wave L>
-struct parity<L, false>: std::integral_constant<int,1>{};
-//negative
-template<hydra::Wave L>
-struct parity<L, true>:  std::integral_constant<int,-1>{};
-
-template<hydra::Wave L,typename T = double>
 class Resonance: public hydra::BaseFunctor<Resonance<L>, hydra::complex<double>, 4>
 {
 	using hydra::BaseFunctor<Resonance<L>, hydra::complex<double>, 4>::_par;
@@ -111,23 +101,25 @@ public:
 	hydra::BreitWignerLineShape<L> const& GetLineShape() const {	return fLineShape; }
 
     __hydra_dual__  inline
-	hydra::complex<double> Evaluate(unsigned int n, double *p)  const {
+	hydra::complex<double> Evaluate(unsigned int n,double *p)  const {
 
 
-		double s12 = hydra::get<0>(p);
-		double s13 = hydra::get<1>(p);
-		
+		auto s12 = p[0];//hydra::get<0>(p);
+		auto s13 = p[1];//hydra::get<1>(p);
+		//printf("s12 = %.2f s13 = %.2f\n",s12,s13);
 		fLineShape.SetParameter(0, _par[2]);
 		fLineShape.SetParameter(1, _par[3]);
 
 		hydra::complex<double> contrib_12 = fLineShape(s12);
 		hydra::complex<double> contrib_13 = fLineShape(s13);
 
-		auto r = hydra::complex<double>(_par[0], _par[1])*(contrib_12 + double(parity<L>::value)*contrib_13 ) ;
+		auto r = hydra::complex<double>(_par[0], _par[1])*(contrib_12 + contrib_13 ) ;
 
 		return r;
 
 	}
+
+   
 
 
 private:
@@ -140,7 +132,7 @@ private:
 
 int main(int argv, char** argc)
 {   
-    
+       
     //E791
     double f0_980_MASS    = 0.990;
     double f0_980_GPP     = 0.02;
@@ -220,7 +212,7 @@ int main(int argv, char** argc)
     Resonance<hydra::DWave> F21270_Resonance(coef_re, coef_im, mass, width, D_MASS, PI_MASS, PI_MASS, PI_MASS , 5.0);
 
     //parametric lambda
-	auto Norm = hydra::wrap_lambda( [] __hydra_dual__ ( unsigned int n, hydra::complex<double> *x){
+	auto Norm = hydra::wrap_lambda( [] __hydra_dual__ ( unsigned int n, hydra::complex<double> *x)  {
 
 				hydra::complex<double> r(0,0);
 
@@ -240,13 +232,15 @@ int main(int argv, char** argc)
 			RHO1450_Resonance,
             OMEGA782_Resonance,
 			F21270_Resonance
-			 );
+			);
+    //auto Model = hydra::compose(Norm,F21270_Resonance);
+
+    const unsigned int nEvents = 100000;
 
 
-
-    double min[2] = {pow(2*PI_MASS,2), pow(2*PI_MASS,2) };
-    double max[2] = { pow(D_MASS-PI_MASS,2), pow(D_MASS-PI_MASS,2)};
-    hydra::Plain<2, hydra::device::sys_t> Integrator(min,max,500);
+    const double min[2] = {pow(2*PI_MASS,2), pow(2*PI_MASS,2) };
+    const double max[2] = { pow(D_MASS-PI_MASS,2), pow(D_MASS-PI_MASS,2)};
+    hydra::Plain<2, hydra::device::sys_t> Integrator(min,max,nEvents);
     //hydra::GenzMalikQuadrature<2, hydra::device::sys_t> GMQ(min, max, 10);
     auto Model_PDF = hydra::make_pdf( Model,Integrator);
     //auto Model_PDF = hydra::make_pdf( Model,GMQ);
@@ -255,37 +249,56 @@ int main(int argv, char** argc)
 	std::cout <<"| Initial PDF Norm: "<< Model_PDF.GetNorm() << "̣ +/- " <<   Model_PDF.GetNormError() << std::endl;
 	std::cout << "-----------------------------------------"<<std::endl;
 
-    std::string file = "../../hydra_charm/Ds3pi_toyMC.root";
-    std::cout << "-----------------------------------------"<<std::endl;
-	std::cout <<"| Getting Data: "<< file << std::endl;
-	std::cout << "-----------------------------------------"<<std::endl;
+    std::string file = "/home/juan/juan/Hydra/hydra_charm/Ds3pi_toyMC.root";
 
-    double _s12=0, _s13=0;
-    TFile f(file.c_str(),"READ");
+    TFile f(file.c_str());
+
+    if(f.IsOpen()){
+
+        std::cout << "-----------------------------------------"<<std::endl;
+	    std::cout <<"| Getting Data: "<< file << std::endl;
+	    std::cout << "-----------------------------------------"<<std::endl;
+
+    }else{
+        return 0;
+    }
+    
+    
+    double _s12;
+    double _s13;
+    
     TTree *t = (TTree*)f.Get("DecayTree");
     t->SetBranchAddress("s12_pipi_DTF",&_s12);
     t->SetBranchAddress("s13_pipi_DTF",&_s13);
 
-    hydra::multivector<hydra::tuple<double, double>, hydra::device::sys_t> particles;
     
-    for(int i = 0 ; i < 200000; i++){
-        particles.push_back(hydra::make_tuple(_s12,_s13));
+    std::array<hydra::tuple<double,double>,nEvents> host_particles;
+    
+    for(unsigned int i = 0 ; i < nEvents; i++){
+        t->GetEntry(i);
+        host_particles[i]=hydra::make_tuple(_s12,_s13);
     }
-
     f.Close();
 
+    hydra::multiarray<double,2, hydra::device::sys_t> particles(host_particles.begin(),host_particles.end());
+
     std::cout << "-----------------------------------------"<<std::endl;
-	std::cout <<"| Load NEntries: "<< particles.size() << std::endl;
+	std::cout <<"| NEntries Loaded: "<< particles.size() << std::endl;
 	std::cout << "-----------------------------------------"<<std::endl;
 
+    for(int  i=0; i<10; i++){
+        std::cout << "[" << i << "] = " << particles[i]<< std::endl;
+    }
+
     auto fcn = hydra::make_loglikehood_fcn(Model_PDF, particles.begin(),particles.end());
+    
 
     ROOT::Minuit2::MnPrint::SetLevel(3);
 	hydra::Print::SetLevel(hydra::WARNING);
 
 	//minimization strategy
-	MnStrategy strategy(2);
-
+	MnStrategy strategy(1);
+    
 	//create Migrad minimizer
 	MnMigrad migrad_d(fcn, fcn.GetParameters().GetMnState() ,  strategy);
 
@@ -295,7 +308,7 @@ int main(int argv, char** argc)
 	//Minimize and profile the time
 	auto start_d = std::chrono::high_resolution_clock::now();
 
-	FunctionMinimum minimum_d =  FunctionMinimum( migrad_d(5000,250) );
+	FunctionMinimum minimum_d =  FunctionMinimum( migrad_d() );
 
 	auto end_d = std::chrono::high_resolution_clock::now();
 
@@ -308,4 +321,8 @@ int main(int argv, char** argc)
 
 	//print parameters after fitting
 	std::cout<<"minimum: "<<minimum_d<<std::endl;
+
+    
+
 }
+
